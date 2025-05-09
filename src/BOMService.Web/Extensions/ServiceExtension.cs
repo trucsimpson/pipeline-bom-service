@@ -1,11 +1,13 @@
 ﻿using AutoMapper;
 using BOMService.Application;
 using BOMService.Application.Behaviors;
+using BOMService.Application.Common.Interfaces;
 using BOMService.Domain.Entities;
 using BOMService.Domain.Repositories;
 using BOMService.Infrastructure;
 using BOMService.Infrastructure.Persistence.EFModels;
 using BOMService.Infrastructure.Repositories;
+using BOMService.Infrastructure.Services;
 using BOMService.Web.Middleware;
 using FluentValidation;
 using MediatR;
@@ -36,7 +38,8 @@ namespace BOMService.Web.Extensions
 
         public static void AddApplicationServices(this IServiceCollection services)
         {
-            //services.AddScoped<IProductService, ProductService>();
+            services.AddScoped<IBOMReportService, BOMReportService>();
+            services.AddScoped<IBOMEngineService, BOMEngineService>();
         }
 
         public static void AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)

@@ -1,9 +1,13 @@
 ﻿using AutoMapper;
 using BOMService.Application.BOMs.Commands;
+using BOMService.Application.Common.Interfaces;
+using BOMService.Application.Models;
 using BOMService.Domain.Entities;
+using BOMService.Domain.Enums;
 using BOMService.Domain.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Data;
 using System.Text.Json;
 
 namespace BOMService.Application.BOMs.Handlers
@@ -11,15 +15,18 @@ namespace BOMService.Application.BOMs.Handlers
     public class CreateBOMHandler : IRequestHandler<CreateBOMCommand, Guid>
     {
         private readonly IBaseRepository<HouseModel> _houseRepository;
+        private readonly IBOMEngineService _BOMEngineService;
         private readonly IMapper _mapper;
         private readonly ILogger<CreateBOMHandler> _logger;
 
         public CreateBOMHandler(
             IBaseRepository<HouseModel> houseRepository,
+            IBOMEngineService BOMEngineService,
             IMapper mapper,
             ILogger<CreateBOMHandler> logger)
         {
             _houseRepository = houseRepository;
+            _BOMEngineService = BOMEngineService;
             _mapper = mapper;
             _logger = logger;
         }
@@ -28,7 +35,7 @@ namespace BOMService.Application.BOMs.Handlers
         {
             _logger.LogInformation($"CreateBOMHandler: {JsonSerializer.Serialize(request.Payload)}");
 
-            var a = await _houseRepository.GetAllAsync();
+            await _BOMEngineService.RunAsync();
 
             return Guid.NewGuid();
         }
