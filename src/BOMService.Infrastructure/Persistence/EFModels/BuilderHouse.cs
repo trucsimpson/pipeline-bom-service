@@ -68,4 +68,6 @@ public partial class BuilderHouse
     public byte? HousesBathroomHouseComponentId { get; set; }
 
     public byte? HousesGarageHouseComponentId { get; set; }
+
+    public virtual ICollection<BuilderHousesInCommunity> BuilderHousesInCommunities { get; set; } = new List<BuilderHousesInCommunity>();
 }

@@ -62,7 +62,10 @@ namespace BOMService.Web.Extensions
         public static IServiceCollection AddRepositories(this IServiceCollection services)
         {
             return services
-                .AddRepository<BuilderHouse, HouseModel>();
+                .AddRepository<BuilderHouse, HouseModel>()
+                .AddRepository<ProductsProduct, ProductModel>()
+                .AddRepository<ProductsProductsToBuildingPhase, ProductToBuildingPhaseModel>()
+                .AddRepository<ProductsProductsToStyle, ProductsToStyleModel>();
         }
 
         public static IServiceCollection AddRepository<TEntity, TModel>(this IServiceCollection services)

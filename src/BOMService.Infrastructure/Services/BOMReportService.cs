@@ -3,6 +3,7 @@ using BOMService.Application.Models;
 using BOMService.Infrastructure.Extensions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System.Data;
 
 namespace BOMService.Infrastructure.Services
@@ -10,13 +11,14 @@ namespace BOMService.Infrastructure.Services
     public class BOMReportService : IBOMReportService
     {
         private readonly string _connectionString;
+        private readonly ILogger<BOMReportService> _logger;
 
-        public BOMReportService(IConfiguration configuration)
+        public BOMReportService(IConfiguration configuration, ILogger<BOMReportService> logger)
         {
             _connectionString = configuration.GetConnectionString("BOMDatabase");
+            _logger = logger;
         }
 
-        //Old name: WipeOutOldReportsAndMakeNewOnes
         public async Task<List<HouseOptionReportResultModel>> ClearAndGenerateReportsAsync(string SQLCommandName, string typeName, DataTable dtInputReports)
         {
             var result = new List<HouseOptionReportResultModel>();

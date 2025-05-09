@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using BOMService.Domain.Repositories;
 using BOMService.Infrastructure.Persistence.EFModels;
 using Microsoft.EntityFrameworkCore;
@@ -25,8 +26,7 @@ namespace BOMService.Infrastructure.Repositories
             IQueryable<TEntity> query = _dbSet;
             if (disableTracking) query = query.AsNoTracking();
 
-            var entities = await query.ToListAsync();
-            return _mapper.Map<List<TModel>>(entities);
+            return await query.ProjectTo<TModel>(_mapper.ConfigurationProvider).ToListAsync();
         }
     }
 }

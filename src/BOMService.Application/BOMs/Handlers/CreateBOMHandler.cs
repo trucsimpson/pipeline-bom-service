@@ -14,18 +14,15 @@ namespace BOMService.Application.BOMs.Handlers
 {
     public class CreateBOMHandler : IRequestHandler<CreateBOMCommand, Guid>
     {
-        private readonly IBaseRepository<HouseModel> _houseRepository;
         private readonly IBOMEngineService _BOMEngineService;
         private readonly IMapper _mapper;
         private readonly ILogger<CreateBOMHandler> _logger;
 
         public CreateBOMHandler(
-            IBaseRepository<HouseModel> houseRepository,
             IBOMEngineService BOMEngineService,
             IMapper mapper,
             ILogger<CreateBOMHandler> logger)
         {
-            _houseRepository = houseRepository;
             _BOMEngineService = BOMEngineService;
             _mapper = mapper;
             _logger = logger;
