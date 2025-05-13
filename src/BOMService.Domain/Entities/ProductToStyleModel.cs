@@ -1,8 +1,8 @@
 ﻿namespace BOMService.Domain.Entities
 {
-    public class ProductsToStyleModel
+    public class ProductToStyleModel
     {
-        public int ProductToStyleId { get; set; }
+        public int Id { get; set; }
 
         public int ProductId { get; set; }
 

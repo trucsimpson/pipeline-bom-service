@@ -29,5 +29,7 @@ public partial class ProductsProduct
 
     public virtual ICollection<ProductsProductsToBuildingPhase> ProductsProductsToBuildingPhases { get; set; } = new List<ProductsProductsToBuildingPhase>();
 
+    public virtual ICollection<ProductsProductsToCategory> ProductsProductsToCategories { get; set; } = new List<ProductsProductsToCategory>();
+
     public virtual ICollection<ProductsProductsToStyle> ProductsProductsToStyles { get; set; } = new List<ProductsProductsToStyle>();
 }

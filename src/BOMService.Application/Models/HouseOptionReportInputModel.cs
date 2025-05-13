@@ -11,7 +11,5 @@
         public int HouseId { get; set; }
         public int OptionId { get; set; }
         public string DependentCondition { get; set; } = string.Empty;
-        public int lcfg { get; set; } //TODO: What is this property for?
-        public int run { get; set; } //TODO: What is this property for?
     }
 }

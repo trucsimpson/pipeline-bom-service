@@ -1,11 +1,11 @@
 ﻿namespace BOMService.Domain.Entities
 {
-    public class ProductToBuildingPhaseModel
+    public class ProductToCategoryModel
     {
         public int Id { get; set; }
 
         public int ProductId { get; set; }
 
-        public int BuildingPhaseId { get; set; }
+        public short CategoryId { get; set; }
     }
 }

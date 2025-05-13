@@ -2,8 +2,8 @@
 {
     public class ProductModel
     {
-        public int ProductId { get; set; }
+        public int Id { get; set; }
 
-        public string ProductName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
     }
 }

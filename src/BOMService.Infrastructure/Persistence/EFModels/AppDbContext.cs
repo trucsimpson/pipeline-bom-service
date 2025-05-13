@@ -19,11 +19,19 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<BuilderHousesInCommunity> BuilderHousesInCommunities { get; set; }
 
+    public virtual DbSet<ProductOrientation> ProductOrientations { get; set; }
+
     public virtual DbSet<ProductsProduct> ProductsProducts { get; set; }
 
     public virtual DbSet<ProductsProductsToBuildingPhase> ProductsProductsToBuildingPhases { get; set; }
 
+    public virtual DbSet<ProductsProductsToCategory> ProductsProductsToCategories { get; set; }
+
     public virtual DbSet<ProductsProductsToStyle> ProductsProductsToStyles { get; set; }
+
+    public virtual DbSet<ProductsToProductPairing> ProductsToProductPairings { get; set; }
+
+    public virtual DbSet<ProductsWithPtoBidAndPtoSid> ProductsWithPtoBidAndPtoSids { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -179,6 +187,25 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_HousesInCommunity_Houses");
         });
 
+        modelBuilder.Entity<ProductOrientation>(entity =>
+        {
+            entity.HasKey(e => e.ProductOrientationsId).HasName("PK_PA_ProductOrientations");
+
+            entity.ToTable("ProductOrientations", "BOM");
+
+            entity.Property(e => e.ProductOrientationsId)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("ProductOrientations_Id");
+            entity.Property(e => e.ProductOrientationsName)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("ProductOrientations_Name");
+            entity.Property(e => e.ProductOrientationsShortDisplay)
+                .HasMaxLength(10)
+                .IsUnicode(false)
+                .HasColumnName("ProductOrientations_ShortDisplay");
+        });
+
         modelBuilder.Entity<ProductsProduct>(entity =>
         {
             entity.HasKey(e => e.ProductsId).HasName("PK_Products");
@@ -254,6 +281,27 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_ProductsToBuildingPhases_Products");
         });
 
+        modelBuilder.Entity<ProductsProductsToCategory>(entity =>
+        {
+            entity.HasKey(e => e.ProductsToCategoriesId).HasName("PK_ProductsToCategories");
+
+            entity.ToTable("Products_ProductsToCategories");
+
+            entity.HasIndex(e => e.CategoriesId, "NCIX_Products_ProductsToCategories_CategoriesId").HasFillFactor(85);
+
+            entity.HasIndex(e => e.ProductsId, "NCIX_Products_ProductsToCategories_ProductsId").HasFillFactor(85);
+
+            entity.HasIndex(e => new { e.ProductsId, e.CategoriesId }, "NCIX_Products_ProductsToCategories_ProductsIdCategoriesId").HasFillFactor(85);
+
+            entity.Property(e => e.ProductsToCategoriesId).HasColumnName("ProductsToCategories_Id");
+            entity.Property(e => e.CategoriesId).HasColumnName("Categories_Id");
+            entity.Property(e => e.ProductsId).HasColumnName("Products_Id");
+
+            entity.HasOne(d => d.Products).WithMany(p => p.ProductsProductsToCategories)
+                .HasForeignKey(d => d.ProductsId)
+                .HasConstraintName("FK_ProductsToCategories_ProductsToCategories");
+        });
+
         modelBuilder.Entity<ProductsProductsToStyle>(entity =>
         {
             entity.HasKey(e => e.ProductsToStylesId);
@@ -287,6 +335,35 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.ProductsId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Products_ProductsToStyles_Products_Products");
+        });
+
+        modelBuilder.Entity<ProductsToProductPairing>(entity =>
+        {
+            entity.HasKey(e => new { e.ProductsId, e.ProductsToProductPairingPairedProductId }).HasName("PK_PA_ProductsToProductPairing");
+
+            entity.ToTable("ProductsToProductPairing", "PRODUCTS");
+
+            entity.Property(e => e.ProductsId).HasColumnName("Products_Id");
+            entity.Property(e => e.ProductsToProductPairingPairedProductId).HasColumnName("ProductsToProductPairing_PairedProductId");
+        });
+
+        modelBuilder.Entity<ProductsWithPtoBidAndPtoSid>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("ProductsWithPtoBIdAndPtoSId");
+
+            entity.Property(e => e.BuildingPhasesId).HasColumnName("BuildingPhases_Id");
+            entity.Property(e => e.ProductsId).HasColumnName("Products_Id");
+            entity.Property(e => e.ProductsToBuildingPhasesId).HasColumnName("ProductsToBuildingPhases_Id");
+            entity.Property(e => e.ProductsToBuildingPhasesTaxable).HasColumnName("ProductsToBuildingPhases_Taxable");
+            entity.Property(e => e.ProductsToStylesId).HasColumnName("ProductsToStyles_Id");
+            entity.Property(e => e.ProductsToStylesIsDefault).HasColumnName("ProductsToStyles_IsDefault");
+            entity.Property(e => e.ProductsToStylesProductCode)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("ProductsToStyles_ProductCode");
+            entity.Property(e => e.StylesId).HasColumnName("Styles_Id");
         });
 
         OnModelCreatingPartial(modelBuilder);

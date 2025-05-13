@@ -32,14 +32,14 @@ namespace BOMService.Web.Extensions
         {
             builder.Services.AddApplicationServices();
             builder.Services.AddInfrastructureServices(builder.Configuration);
-            builder.Services.AddRepositories();
             builder.Services.AddThirdPartyServices(typeof(ApplicationAssemblyReference).Assembly);
         }
 
         public static void AddApplicationServices(this IServiceCollection services)
         {
-            services.AddScoped<IBOMReportService, BOMReportService>();
             services.AddScoped<IBOMEngineService, BOMEngineService>();
+            services.AddScoped<IBOMEngineManagerService, BOMEngineManagerService>();
+            services.AddScoped<IProductService, ProductService>();
         }
 
         public static void AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
@@ -47,7 +47,7 @@ namespace BOMService.Web.Extensions
             services.AddDbContext<AppDbContext>(c =>
                 c.UseSqlServer(configuration.GetConnectionString("BOMDatabase")));
             services.AddTransient<ExceptionHandlingMiddleware>();
-            //services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped(typeof(IBaseRepository<,>), typeof(BaseRepository<,>));
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         }
 
@@ -57,28 +57,6 @@ namespace BOMService.Web.Extensions
             services.AddAutoMapper(typeof(InfrastructureAssemblyReference).Assembly);
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
             services.AddValidatorsFromAssembly(assembly);
-        }
-
-        public static IServiceCollection AddRepositories(this IServiceCollection services)
-        {
-            return services
-                .AddRepository<BuilderHouse, HouseModel>()
-                .AddRepository<ProductsProduct, ProductModel>()
-                .AddRepository<ProductsProductsToBuildingPhase, ProductToBuildingPhaseModel>()
-                .AddRepository<ProductsProductsToStyle, ProductsToStyleModel>();
-        }
-
-        public static IServiceCollection AddRepository<TEntity, TModel>(this IServiceCollection services)
-            where TEntity : class
-            where TModel : class
-        {
-            services.AddScoped<IBaseRepository<TModel>>(sp =>
-                new BaseRepository<TEntity, TModel>(
-                    sp.GetRequiredService<AppDbContext>(),
-                    sp.GetRequiredService<IMapper>()
-                )
-            );
-            return services;
         }
     }
 }
