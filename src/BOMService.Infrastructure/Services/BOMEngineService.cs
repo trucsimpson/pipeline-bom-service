@@ -1,6 +1,6 @@
 ﻿using BOMService.Application.Common.Interfaces;
-using BOMService.Application.Models;
-using BOMService.Application.Models.BOMStepOutputs;
+using BOMService.Application.DTOs;
+using BOMService.Application.DTOs.BOMStepOutputs;
 using BOMService.Domain.Entities;
 using BOMService.Domain.Enums;
 using BOMService.Domain.Repositories;
@@ -39,20 +39,20 @@ namespace BOMService.Infrastructure.Services
             //TODO: Fake data for testing
             var BOMType = BOMTypes.House;
             var runningType = BOMRunningType.All;
-            var BOMHeaders = new List<BOMHeaderModel>
+            var BOMHeaders = new List<BOMHeaderDto>
             {
-                new BOMHeaderModel
+                new BOMHeaderDto
                 {
-                    HeaderArgs = new HouseOptionReportInputModel
+                    HeaderArgs = new HouseOptionReportInputDto
                     {
                         CommunityId = 6122,
                         HouseId = 1645,
                         OptionId = 9799
                     }
                 },
-                new BOMHeaderModel
+                new BOMHeaderDto
                 {
-                    HeaderArgs = new HouseOptionReportInputModel
+                    HeaderArgs = new HouseOptionReportInputDto
                     {
                         CommunityId = 6122,
                         HouseId = 1645,
@@ -66,12 +66,14 @@ namespace BOMService.Infrastructure.Services
             if (!buildHeader.IsSuccess) return;
             operationTimer.Stop();
             _logger.LogInformation($"{nameof(TimestampHeadersStart)} took {operationTimer.ElapsedMilliseconds} ms");
+            Debug.WriteLine($"{nameof(TimestampHeadersStart)}: {operationTimer.ElapsedMilliseconds} ms");
 
-            operationTimer.Start();
-            var preparationData = await GetGeneratingProducts(BOMType, BOMHeaders, buildHeader.Data);
+            operationTimer.Restart();
+            var preparationData = await GetGeneratingProducts(BOMType, buildHeader.Data);
             if (!preparationData.IsSuccess) return;
             operationTimer.Stop();
             _logger.LogInformation($"{nameof(GetGeneratingProducts)} took {operationTimer.ElapsedMilliseconds} ms");
+            Debug.WriteLine($"{nameof(GetGeneratingProducts)}: {operationTimer.ElapsedMilliseconds} ms");
         }
 
         /// <summary>
@@ -87,16 +89,16 @@ namespace BOMService.Infrastructure.Services
         /// <param name="BOMRunningType"></param>
         /// <param name="BOMHeaders"></param>
         /// <returns></returns>
-        public async Task<BaseResultModel<BOMHeaderMappingModel>> TimestampHeadersStart(BOMTypes BOMType, BOMRunningType BOMRunningType, List<BOMHeaderModel> BOMHeaders)
+        public async Task<BaseResultDto<BOMHeaderMappingDto>> TimestampHeadersStart(BOMTypes BOMType, BOMRunningType BOMRunningType, List<BOMHeaderDto> BOMHeaders)
         {
             try
             {
                 var nodeGeneratorIds = new Dictionary<int, int>();
-                var headerOptionsAndConditions = new Dictionary<int, Dictionary<HeaderOptionConditionModel, bool>>();
+                var headerOptionsAndConditions = new Dictionary<int, Dictionary<HeaderOptionConditionDto, bool>>();
 
                 var inputReportTable = new DataTable();
-                var reportResults = new List<HouseOptionReportResultModel>();
-                var houseReportMap = new Dictionary<string, LinkedList<HouseReportDetailModel>>();
+                var reportResults = new List<HouseOptionReportResultDto>();
+                var houseReportMap = new Dictionary<string, LinkedList<HouseReportDetailDto>>();
                 var simpleReportMap = new Dictionary<string, int>();
 
                 switch (BOMType)
@@ -198,7 +200,7 @@ namespace BOMService.Infrastructure.Services
                         reportResults = await _BOMEngineManagerService.ClearAndGenerateReportsAsync("BOM.WipeAndMakeNewLBMJobBOMReports", "BOM.LBMJobBOMReportsToGenerateData", inputReportTable);
                         break;
                     default:
-                        return BaseResultModel<BOMHeaderMappingModel>.Failure("BOM Type not set.");
+                        return BaseResultDto<BOMHeaderMappingDto>.Failure("BOM Type not set.");
                 }
 
                 foreach (var report in reportResults)
@@ -208,7 +210,7 @@ namespace BOMService.Infrastructure.Services
 
                     if (BOMType == BOMTypes.House)
                     {
-                        var detail = new HouseReportDetailModel
+                        var detail = new HouseReportDetailDto
                         {
                             GeneratedReportId = generatedReportId,
                             OptionId = report.OptionId,
@@ -217,7 +219,7 @@ namespace BOMService.Infrastructure.Services
 
                         if (!houseReportMap.ContainsKey(reportParams))
                         {
-                            houseReportMap[reportParams] = new LinkedList<HouseReportDetailModel>();
+                            houseReportMap[reportParams] = new LinkedList<HouseReportDetailDto>();
                         }
                         houseReportMap[reportParams].AddLast(detail);
                     }
@@ -251,13 +253,13 @@ namespace BOMService.Infrastructure.Services
                         nodeGeneratorIds[reportId] = 0;
 
                         //Generate the data for HeaderOptionsAndConditions, to avoid affecting another bom type
-                        var key = new HeaderOptionConditionModel
+                        var key = new HeaderOptionConditionDto
                         {
                             OptionId = header.HeaderArgs.OptionId,
                             DependentCondition = header.HeaderArgs.DependentCondition
                         };
                         if (!headerOptionsAndConditions.ContainsKey(reportId))
-                            headerOptionsAndConditions[reportId] = new Dictionary<HeaderOptionConditionModel, bool>();
+                            headerOptionsAndConditions[reportId] = new Dictionary<HeaderOptionConditionDto, bool>();
 
                         headerOptionsAndConditions[reportId][key] = false;
                     }
@@ -274,17 +276,17 @@ namespace BOMService.Infrastructure.Services
                     {
                         foreach (var detail in reportDetailList)
                         {
-                            var key = new HeaderOptionConditionModel { OptionId = detail.OptionId, DependentCondition = detail.DependentCondition };
+                            var key = new HeaderOptionConditionDto { OptionId = detail.OptionId, DependentCondition = detail.DependentCondition };
 
                             if (!headerOptionsAndConditions.ContainsKey(detail.GeneratedReportId))
-                                headerOptionsAndConditions[detail.GeneratedReportId] = new Dictionary<HeaderOptionConditionModel, bool>();
+                                headerOptionsAndConditions[detail.GeneratedReportId] = new Dictionary<HeaderOptionConditionDto, bool>();
 
                             headerOptionsAndConditions[detail.GeneratedReportId][key] = false;
                         }
                     }
                 }
 
-                return BaseResultModel<BOMHeaderMappingModel>.Success(new BOMHeaderMappingModel
+                return BaseResultDto<BOMHeaderMappingDto>.Success(new BOMHeaderMappingDto
                 {
                     Headers = BOMHeaders,
                     DictionaryNodeGeneratorIds = nodeGeneratorIds,
@@ -294,378 +296,413 @@ namespace BOMService.Infrastructure.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error in {nameof(TimestampHeadersStart)}");
-                return BaseResultModel<BOMHeaderMappingModel>.Failure($"Error in {nameof(TimestampHeadersStart)}");
+                return BaseResultDto<BOMHeaderMappingDto>.Failure($"Error in {nameof(TimestampHeadersStart)}");
             }
         }
 
-        public async Task<BaseResultModel<BOMPreparationDataModel>> GetGeneratingProducts(BOMTypes BOMType, List<BOMHeaderModel> BOMHeaders, BOMHeaderMappingModel headerResult)
+        /// <summary>
+        /// Prepares a list of products for BOM (Bill of Materials) generation based on the given BOM type.
+        /// This method retrieves data from mapping tables such as ProductToStyle, ProductToBuildingPhase, etc.,
+        /// enriches product information (style, name, building phase),
+        /// filters based on configuration settings, processes orientation (if BOM type is Job),
+        /// and returns a list of products ready for use in BOM reports.
+        /// <para>
+        /// Suggested name: PrepareProductsForBOMGenerationAsync
+        /// </para>
+        /// </summary>
+        /// <param name="BOMType">The type of BOM to be generated (Job, Worksheet, House, GlobalOption, etc.)</param>
+        /// <param name="headerResult">Parsed result of header mappings and related conditions</param>
+        /// <returns></returns>
+        public async Task<BaseResultDto<BOMPreparationDataDto>> GetGeneratingProducts(BOMTypes BOMType, BOMHeaderMappingDto headerResult)
         {
-            var productDict = new Dictionary<int, string>();
-
-            var productToBuildingPhaseConversionDict = new Dictionary<int, ProductToBuildingPhaseConversionInformationNode>();
-            var productToBuildingPhaseDict = new Dictionary<ProductPhaseKey, int>();
-
-            var productToStyleDict = new Dictionary<int, ProductToStyleLookupNode>();
-            var defaultProductToStyleDict = new Dictionary<int, Tuple<int, int>>();
-            var productLookupForStyleDict = new Dictionary<int, ProductInverseStyleLookupNode>();
-            var productToStyleIdDict = new Dictionary<ProductStyleKey, int>();
-
-            var productToCategoryDict = new Dictionary<Tuple<int, int>, int>();
-            var productLookupCategoryIdsDict = new Dictionary<int, List<int>>();
-
-            var reverseProductDict = new Dictionary<int, int>();
-            var systemOrientationDict = new Dictionary<string, Tuple<int, string>>();
-            var systemOrientationIdKeyDict = new Dictionary<int, Tuple<string, string>>();
-
-            var jobOrientation = new JobFlipStatusModel();
-
-            var listProductsWithOutStyle = new List<string>();
-
-            var generatingProducts = new LinkedList<BOMGeneratingProductModel>();
-
-            if (!productDict.Any())
+            try
             {
-                productDict = await _productService.GetProductDictAsync();
-            }
+                var productDict = new Dictionary<int, string>();
 
-            // Get product => building phase
-            if (!productToBuildingPhaseConversionDict.Any())
-            {
-                var productsToBuildingPhase = await _productService.GetProductsToBuildingPhaseAsync();
-                foreach (var p in productsToBuildingPhase)
+                var productToBuildingPhaseConversionDict = new Dictionary<int, ProductToBuildingPhaseConversionInformationNodeDto>();
+                var productToBuildingPhaseDict = new Dictionary<ProductPhaseKey, int>();
+
+                var productToStyleDict = new Dictionary<int, ProductToStyleLookupNodeDto>();
+                var defaultProductToStyleDict = new Dictionary<int, Tuple<int, int>>();
+                var productLookupForStyleDict = new Dictionary<int, ProductInverseStyleLookupNodeDto>();
+                var productToStyleIdDict = new Dictionary<ProductStyleKey, int>();
+
+                var productToCategoryDict = new Dictionary<Tuple<int, int>, int>();
+                var productLookupCategoryIdsDict = new Dictionary<int, List<int>>();
+
+                var reverseProductDict = new Dictionary<int, int>();
+                var systemOrientationDict = new Dictionary<string, Tuple<int, string>>();
+                var systemOrientationIdKeyDict = new Dictionary<int, Tuple<string, string>>();
+
+                var jobOrientation = new JobFlipStatusDto();
+
+                var listProductsWithOutStyle = new List<string>();
+
+                var generatingProducts = new LinkedList<BOMGeneratingProductDto>();
+
+                if (!productDict.Any())
                 {
-                    productToBuildingPhaseConversionDict[p.Id] = new ProductToBuildingPhaseConversionInformationNode
-                    {
-                        BuildingPhaseId = p.BuildingPhaseId,
-                        ProductId = p.ProductId
-                    };
-                    productToBuildingPhaseDict[new ProductPhaseKey(p.ProductId, p.BuildingPhaseId)] = p.Id;
+                    productDict = await _productService.GetProductDictAsync();
                 }
-            }
 
-            // Get product => style
-            if (!productToStyleDict.Any())
-            {
-                var productToStyles = await _productService.GetProductsToStyleAsync();
-                foreach (var item in productToStyles)
+                // Get product => building phase
+                if (!productToBuildingPhaseConversionDict.Any())
                 {
-                    var keyStyle = new ProductStyleKey(item.ProductId, item.StyleId);
-                    var chainNode = new ProductInverseStyleLookupNode
+                    var productsToBuildingPhase = await _productService.GetProductsToBuildingPhaseAsync();
+                    foreach (var p in productsToBuildingPhase)
                     {
-                        StyleId = item.StyleId,
-                        ProductToStyleId = item.Id,
-                        Link = productLookupForStyleDict.ContainsKey(item.ProductId) ? productLookupForStyleDict[item.ProductId] : null
-                    };
-
-                    productToStyleDict[item.Id] = new ProductToStyleLookupNode
-                    {
-                        ProductId = item.ProductId,
-                        StyleId = item.StyleId
-                    };
-
-                    if (item.IsDefault)
-                    {
-                        defaultProductToStyleDict[item.ProductId] = new Tuple<int, int>(item.StyleId, item.Id);
-                    }
-
-                    productLookupForStyleDict[item.ProductId] = chainNode;
-
-                    if (productToStyleIdDict.ContainsKey(keyStyle))
-                        productToStyleIdDict[keyStyle] = item.Id;
-                    else
-                        productToStyleIdDict.Add(keyStyle, item.Id);
-                }
-            }
-
-            // Get product => category
-            if (!productToCategoryDict.Any())
-            {
-                var productToCategories = await _productService.GetProductsToCategoryAsync();
-                foreach (var item in productToCategories)
-                {
-                    productToCategoryDict[new Tuple<int, int>(item.ProductId, item.CategoryId)] = item.Id;
-
-                    if (!productLookupCategoryIdsDict.TryGetValue(item.ProductId, out var categories))
-                    {
-                        categories = new List<int>();
-                        productLookupCategoryIdsDict[item.ProductId] = categories;
-                    }
-
-                    categories.Add(item.CategoryId);
-                }
-            }
-
-            // Get default style mapping
-            var defaultProductToStyles = await _productService.GetProductsToBuildingPhaseAndStyleAsync();
-            var productDefaultStyleLookup = defaultProductToStyles
-                .ToDictionary(
-                    x => x.ProductToBuildingPhaseId,
-                    x => x.ProductToStyleId
-                );
-            if (!productDefaultStyleLookup.Any())
-            {
-                return BaseResultModel<BOMPreparationDataModel>.Failure("No products / styles found for GetProductsForBOMGeneration!");
-            }
-
-            if (!reverseProductDict.Any())
-            {
-                reverseProductDict = await _productService.GetReverseProductDictAsync();
-            }
-
-            if (!systemOrientationDict.Any())
-            {
-                systemOrientationDict = await _productService.GetProductOrientationDictAsync();
-            }
-
-            if (!systemOrientationIdKeyDict.Any())
-            {
-                systemOrientationIdKeyDict = await _productService.GetProductOrientationIdKeyDictAsync();
-            }
-
-            // Prepare input report table
-            var productNameNeededForThings = false;
-            var SQLCommandName = string.Empty;
-            var typeName = string.Empty;
-            var inputReportTable = new DataTable();
-
-            switch (BOMType)
-            {
-                case BOMTypes.GlobalOption:
-                    productNameNeededForThings = true;
-                    SQLCommandName = "BOM.GetGlobalOptionBOMGeneratingProducts";
-                    typeName = "BOM.GlobalOptionInputReports";
-
-                    inputReportTable.Columns.AddRange(new[]
-                    {
-                        new DataColumn("GlobalOptionId", typeof(int)),
-                        new DataColumn("DependentCondition", typeof(string)),
-                        new DataColumn("CommunityId", typeof(int)),
-                        new DataColumn("GeneratedReportId", typeof(int))
-                    });
-
-                    foreach (var header in BOMHeaders)
-                    {
-                        inputReportTable.Rows.Add(header.HeaderArgs.OptionId, header.HeaderArgs.DependentCondition, header.HeaderArgs.CommunityId, header.GeneratedReportId);
-                    }
-                    break;
-                case BOMTypes.Worksheet:
-                    SQLCommandName = "BOM.GetWorksheetBOMGeneratingProducts";
-                    typeName = "BOM.WorksheetInputReports";
-
-                    inputReportTable.Columns.AddRange(new[]
-                    {
-                        new DataColumn("WorksheetId", typeof(int)),
-                        new DataColumn("DependentCondition", typeof(string)),
-                        new DataColumn("GeneratedReportId", typeof(int))
-                    });
-
-                    foreach (var header in BOMHeaders)
-                    {
-                        inputReportTable.Rows.Add(header.HeaderArgs.WorksheetId, string.Empty, header.GeneratedReportId);
-                    }
-                    break;
-                case BOMTypes.CustomOption:
-                    productNameNeededForThings = true;
-                    SQLCommandName = "BOM.GetCustomOptionBOMGeneratingProducts";
-                    typeName = "BOM.CustomOptionInputReports";
-
-                    inputReportTable.Columns.AddRange(new[]
-                    {
-                        new DataColumn("CustomOptionId", typeof(int)),
-                        new DataColumn("DependentCondition", typeof(string)),
-                        new DataColumn("GeneratedReportId", typeof(int))
-                    });
-
-                    foreach (var header in BOMHeaders)
-                    {
-                        inputReportTable.Rows.Add(header.HeaderArgs.CustomOptionId, string.Empty, header.GeneratedReportId);
-                    }
-                    break;
-                case BOMTypes.Job:
-                    productNameNeededForThings = true;
-                    SQLCommandName = "BOM.GetJobBOMGeneratingProducts";
-                    typeName = "BOM.JobInputReports";
-
-                    inputReportTable.Columns.AddRange(new[]
-                    {
-                        new DataColumn("JobId", typeof(int)),
-                        new DataColumn("GeneratedReportId", typeof(int))
-                    });
-
-                    foreach (var header in BOMHeaders)
-                    {
-                        inputReportTable.Rows.Add(header.HeaderArgs.JobId, header.GeneratedReportId);
-                    }
-
-                    var jobIds = BOMHeaders.First().HeaderArgs.JobId.ToString() + ",";
-                    var jobFlipStatuses = await _BOMEngineManagerService.GetJobFlipStatusesAsync(jobIds);
-                    foreach (var item in jobFlipStatuses)
-                    {
-                        jobOrientation = item;
-                    }
-                    break;
-                case BOMTypes.House:
-                    SQLCommandName = _getsettingCommunitySpecificHouseQuantities == "Additive"
-                        ? "BOM.GetALLHouseOptionBOMGeneratingProducts"
-                        : "BOM.GetHouseOptionBOMGeneratingProducts";
-                    typeName = "BOM.HouseOptionInputReports";
-
-                    inputReportTable.Columns.AddRange(new[]
-                    {
-                        new DataColumn("HouseId", typeof(int)),
-                        new DataColumn("OptionId", typeof(int)),
-                        new DataColumn("DependentCondition", typeof(string)),
-                        new DataColumn("CommunityId", typeof(int)),
-                        new DataColumn("GeneratedReportId", typeof(int))
-                    });
-
-                    foreach (var header in BOMHeaders)
-                    {
-                        if (headerResult.HeaderOptionsAndConditions.ContainsKey(header.GeneratedReportId))
+                        productToBuildingPhaseConversionDict[p.Id] = new ProductToBuildingPhaseConversionInformationNodeDto
                         {
-                            foreach (var optConItem in headerResult.HeaderOptionsAndConditions[header.GeneratedReportId].Keys)
-                            {
-                                inputReportTable.Rows.Add(header.HeaderArgs.HouseId, optConItem.OptionId, optConItem.DependentCondition, header.HeaderArgs.CommunityId, header.GeneratedReportId);
-                            }
-                        }
+                            BuildingPhaseId = p.BuildingPhaseId,
+                            ProductId = p.ProductId
+                        };
+                        productToBuildingPhaseDict[new ProductPhaseKey(p.ProductId, p.BuildingPhaseId)] = p.Id;
                     }
-                    break;
-                case BOMTypes.LBMJob:
-                    productNameNeededForThings = true;
-                    SQLCommandName = "BOM.GetLBMJobBOMGeneratingProducts";
-                    typeName = "BOM.LBMJobInputReports";
+                }
 
-                    inputReportTable.Columns.AddRange(new[]
-                    {
-                        new DataColumn("JobId", typeof(int)),
-                        new DataColumn("GeneratedReportId", typeof(int))
-                    });
-
-                    foreach (var header in BOMHeaders)
-                    {
-                        inputReportTable.Rows.Add(header.HeaderArgs.JobId, header.GeneratedReportId);
-                    }
-                    break;
-                default:
-                    return BaseResultModel<BOMPreparationDataModel>.Failure("Unable to retrieve products for BOM generation at this time in place #02. Error: Selected AtomicBOMTypes is not handled");
-            }
-
-            // Get actual product list
-            var groupParams = _groupByParameterList.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-            var productsForBOMGeneration = await _productService.GetProductsForBOMGenerationAsync(SQLCommandName, typeName, inputReportTable);
-            foreach (var product in productsForBOMGeneration)
-            {
-                // Preserve raw info
-                var tempBuildingPhaseId = product.BuildingPhaseId;
-                var tempProductId = product.ProductId;
-                var tempProductName = product.ProductName;
-
-                // Reset
-                product.BuildingPhaseId = 0;
-                product.ProductId = 0;
-                product.ProductName = string.Empty;
-
-                if (BOMType == BOMTypes.House)
+                // Get product => style
+                if (!productToStyleDict.Any())
                 {
-                    if (!_groupByParameter)
+                    var productToStyles = await _productService.GetProductsToStyleAsync();
+                    foreach (var item in productToStyles)
                     {
-                        product.Parameters = string.Empty;
-                    }
-                    else
-                    {
-                        if (!string.IsNullOrEmpty(product.Parameters) && groupParams.Length > 0)
+                        var keyStyle = new ProductStyleKey(item.ProductId, item.StyleId);
+                        var chainNode = new ProductInverseStyleLookupNodeDto
                         {
-                            var validParams = product.Parameters
-                                .Split('|', StringSplitOptions.RemoveEmptyEntries)
-                                .Select(p => p.Split('='))
-                                .Where(p => p.Length > 1 && groupParams.Contains(p[0]))
-                                .Select(p => $"{p[0]}={p[1]}");
+                            StyleId = item.StyleId,
+                            ProductToStyleId = item.Id,
+                            Link = productLookupForStyleDict.ContainsKey(item.ProductId) ? productLookupForStyleDict[item.ProductId] : null
+                        };
 
-                            product.Parameters = string.Join(";", validParams);
-                        }
-                    }
-                }
-
-                if (product.ProductToStyleId == 0 && productDefaultStyleLookup.ContainsKey(product.ProductToBuildingPhaseId))
-                {
-                    product.ProductToStyleId = productDefaultStyleLookup[product.ProductToBuildingPhaseId];
-                }
-
-                if (productNameNeededForThings)
-                {
-                    product.BuildingPhaseId = tempBuildingPhaseId;
-                    product.ProductId = tempProductId;
-                    product.ProductName = tempProductName;
-
-                    if (product.ProductToStyleId <= 0)
-                    {
-                        listProductsWithOutStyle.Add(product.ProductName);
-                    }
-                    else if (productToStyleDict.TryGetValue(product.ProductToStyleId, out var node))
-                    {
-                        product.StyleId = node.StyleId;
-                    }
-                }
-                else
-                {
-                    var key = productToBuildingPhaseDict
-                        .Where(t => t.Value == product.ProductToBuildingPhaseId)
-                        .Select(t => t.Key)
-                        .FirstOrDefault();
-
-                    if (key != null)
-                    {
-                        product.BuildingPhaseId = key.BuildingPhaseId;
-                        product.ProductId = key.ProductId;
-                        product.ProductName = productDict[product.ProductId];
-
-                        if (product.ProductToStyleId == 0 && defaultProductToStyleDict.ContainsKey(product.ProductId))
+                        productToStyleDict[item.Id] = new ProductToStyleLookupNodeDto
                         {
-                            product.StyleId = defaultProductToStyleDict[product.ProductId].Item1;
-                            product.ProductToStyleId = defaultProductToStyleDict[product.ProductId].Item2;
-                        }
-                        else if (productLookupForStyleDict.TryGetValue(product.ProductId, out var lookupNode))
+                            ProductId = item.ProductId,
+                            StyleId = item.StyleId
+                        };
+
+                        if (item.IsDefault)
                         {
-                            do
-                            {
-                                product.StyleId = lookupNode.StyleId;
-                                lookupNode = lookupNode.Link;
-                            }
-                            while (lookupNode != null && lookupNode.ProductToStyleId != product.ProductToStyleId);
+                            defaultProductToStyleDict[item.ProductId] = new Tuple<int, int>(item.StyleId, item.Id);
                         }
+
+                        productLookupForStyleDict[item.ProductId] = chainNode;
+
+                        if (productToStyleIdDict.ContainsKey(keyStyle))
+                            productToStyleIdDict[keyStyle] = item.Id;
+                        else
+                            productToStyleIdDict.Add(keyStyle, item.Id);
                     }
                 }
 
-                if (product.BOMGeneratedReportId > 0)
+                // Get product => category
+                if (!productToCategoryDict.Any())
                 {
-                    product.NodeId = GetNextTraceNodeId(headerResult.DictionaryNodeGeneratorIds, product.BOMGeneratedReportId);
-                    generatingProducts.AddLast(product);
-                }
-            }
+                    var productToCategories = await _productService.GetProductsToCategoryAsync();
+                    foreach (var item in productToCategories)
+                    {
+                        productToCategoryDict[new Tuple<int, int>(item.ProductId, item.CategoryId)] = item.Id;
 
-            if (listProductsWithOutStyle.Any())
-            {
-                var productsOutStyle = String.Join(", ", listProductsWithOutStyle.Distinct());
-                var errorMsg = string.Empty;
+                        if (!productLookupCategoryIdsDict.TryGetValue(item.ProductId, out var categories))
+                        {
+                            categories = new List<int>();
+                            productLookupCategoryIdsDict[item.ProductId] = categories;
+                        }
+
+                        categories.Add(item.CategoryId);
+                    }
+                }
+
+                // Get default style mapping
+                var defaultProductToStyles = await _productService.GetProductsToBuildingPhaseAndStyleAsync();
+                var productDefaultStyleLookup = defaultProductToStyles
+                    .ToDictionary(
+                        x => x.ProductToBuildingPhaseId,
+                        x => x.ProductToStyleId
+                    );
+                if (!productDefaultStyleLookup.Any())
+                {
+                    return BaseResultDto<BOMPreparationDataDto>.Failure("No products / styles found for GetProductsForBOMGeneration!");
+                }
+
+                if (!reverseProductDict.Any())
+                {
+                    reverseProductDict = await _productService.GetReverseProductDictAsync();
+                }
+
+                if (!systemOrientationDict.Any())
+                {
+                    systemOrientationDict = await _productService.GetProductOrientationDictAsync();
+                }
+
+                if (!systemOrientationIdKeyDict.Any())
+                {
+                    systemOrientationIdKeyDict = await _productService.GetProductOrientationIdKeyDictAsync();
+                }
+
+                // Prepare input report table
+                var shouldIncludeProductName = false;
+                var SQLCommandName = string.Empty;
+                var typeName = string.Empty;
+                var inputReportTable = new DataTable();
+
                 switch (BOMType)
                 {
+                    case BOMTypes.GlobalOption:
+                        shouldIncludeProductName = true;
+                        SQLCommandName = "BOM.GetGlobalOptionBOMGeneratingProducts";
+                        typeName = "BOM.GlobalOptionInputReports";
+
+                        inputReportTable.Columns.AddRange(new[]
+                        {
+                            new DataColumn("GlobalOptionId", typeof(int)),
+                            new DataColumn("DependentCondition", typeof(string)),
+                            new DataColumn("CommunityId", typeof(int)),
+                            new DataColumn("GeneratedReportId", typeof(int))
+                        });
+
+                        foreach (var header in headerResult.Headers)
+                        {
+                            inputReportTable.Rows.Add(header.HeaderArgs.OptionId, header.HeaderArgs.DependentCondition, header.HeaderArgs.CommunityId, header.GeneratedReportId);
+                        }
+                        break;
+                    case BOMTypes.Worksheet:
+                        SQLCommandName = "BOM.GetWorksheetBOMGeneratingProducts";
+                        typeName = "BOM.WorksheetInputReports";
+
+                        inputReportTable.Columns.AddRange(new[]
+                        {
+                            new DataColumn("WorksheetId", typeof(int)),
+                            new DataColumn("DependentCondition", typeof(string)),
+                            new DataColumn("GeneratedReportId", typeof(int))
+                        });
+
+                        foreach (var header in headerResult.Headers)
+                        {
+                            inputReportTable.Rows.Add(header.HeaderArgs.WorksheetId, string.Empty, header.GeneratedReportId);
+                        }
+                        break;
                     case BOMTypes.CustomOption:
-                        errorMsg = $"Custom Option BOM may not contain all Products, the following {productsOutStyle} are missing Styles.";
+                        shouldIncludeProductName = true;
+                        SQLCommandName = "BOM.GetCustomOptionBOMGeneratingProducts";
+                        typeName = "BOM.CustomOptionInputReports";
+
+                        inputReportTable.Columns.AddRange(new[]
+                        {
+                            new DataColumn("CustomOptionId", typeof(int)),
+                            new DataColumn("DependentCondition", typeof(string)),
+                            new DataColumn("GeneratedReportId", typeof(int))
+                        });
+
+                        foreach (var header in headerResult.Headers)
+                        {
+                            inputReportTable.Rows.Add(header.HeaderArgs.CustomOptionId, string.Empty, header.GeneratedReportId);
+                        }
                         break;
                     case BOMTypes.Job:
-                        errorMsg = $"Job BOM may not contain all Products, the following {productsOutStyle} are missing Styles.";
-                        break;
-                    case BOMTypes.GlobalOption:
-                        errorMsg = $"Global Option BOM may not contain all Products, the following {productsOutStyle} are missing Styles.";
-                        break;
-                }
-                return BaseResultModel<BOMPreparationDataModel>.Failure(errorMsg);
-            }
+                        shouldIncludeProductName = true;
+                        SQLCommandName = "BOM.GetJobBOMGeneratingProducts";
+                        typeName = "BOM.JobInputReports";
 
-            return BaseResultModel<BOMPreparationDataModel>.Success(new BOMPreparationDataModel
+                        inputReportTable.Columns.AddRange(new[]
+                        {
+                            new DataColumn("JobId", typeof(int)),
+                            new DataColumn("GeneratedReportId", typeof(int))
+                        });
+
+                        foreach (var header in headerResult.Headers)
+                        {
+                            inputReportTable.Rows.Add(header.HeaderArgs.JobId, header.GeneratedReportId);
+                        }
+
+                        var jobIds = headerResult.Headers.First().HeaderArgs.JobId.ToString() + ",";
+                        var jobFlipStatuses = await _BOMEngineManagerService.GetJobFlipStatusesAsync(jobIds);
+                        foreach (var item in jobFlipStatuses)
+                        {
+                            jobOrientation = item;
+                        }
+                        break;
+                    case BOMTypes.House:
+                        SQLCommandName = _getsettingCommunitySpecificHouseQuantities == "Additive"
+                            ? "BOM.GetALLHouseOptionBOMGeneratingProducts"
+                            : "BOM.GetHouseOptionBOMGeneratingProducts";
+                        typeName = "BOM.HouseOptionInputReports";
+
+                        inputReportTable.Columns.AddRange(new[]
+                        {
+                            new DataColumn("HouseId", typeof(int)),
+                            new DataColumn("OptionId", typeof(int)),
+                            new DataColumn("DependentCondition", typeof(string)),
+                            new DataColumn("CommunityId", typeof(int)),
+                            new DataColumn("GeneratedReportId", typeof(int))
+                        });
+
+                        foreach (var header in headerResult.Headers)
+                        {
+                            if (headerResult.HeaderOptionsAndConditions.ContainsKey(header.GeneratedReportId))
+                            {
+                                foreach (var optConItem in headerResult.HeaderOptionsAndConditions[header.GeneratedReportId].Keys)
+                                {
+                                    inputReportTable.Rows.Add(header.HeaderArgs.HouseId, optConItem.OptionId, optConItem.DependentCondition, header.HeaderArgs.CommunityId, header.GeneratedReportId);
+                                }
+                            }
+                        }
+                        break;
+                    case BOMTypes.LBMJob:
+                        shouldIncludeProductName = true;
+                        SQLCommandName = "BOM.GetLBMJobBOMGeneratingProducts";
+                        typeName = "BOM.LBMJobInputReports";
+
+                        inputReportTable.Columns.AddRange(new[]
+                        {
+                            new DataColumn("JobId", typeof(int)),
+                            new DataColumn("GeneratedReportId", typeof(int))
+                        });
+
+                        foreach (var header in headerResult.Headers)
+                        {
+                            inputReportTable.Rows.Add(header.HeaderArgs.JobId, header.GeneratedReportId);
+                        }
+                        break;
+                    default:
+                        return BaseResultDto<BOMPreparationDataDto>.Failure("Unable to retrieve products for BOM generation at this time in place #02. Error: Selected AtomicBOMTypes is not handled");
+                }
+
+                // Get actual product list
+                var groupParams = _groupByParameterList.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                var productsForBOMGeneration = await _productService.GetProductsForBOMGenerationAsync(SQLCommandName, typeName, inputReportTable);
+                foreach (var product in productsForBOMGeneration)
+                {
+                    // Preserve raw info
+                    var tempBuildingPhaseId = product.BuildingPhaseId;
+                    var tempProductId = product.ProductId;
+                    var tempProductName = product.ProductName;
+
+                    // Reset
+                    product.BuildingPhaseId = 0;
+                    product.ProductId = 0;
+                    product.ProductName = string.Empty;
+
+                    if (BOMType == BOMTypes.House)
+                    {
+                        if (!_groupByParameter)
+                        {
+                            product.Parameters = string.Empty;
+                        }
+                        else
+                        {
+                            if (!string.IsNullOrEmpty(product.Parameters) && groupParams.Length > 0)
+                            {
+                                var validParams = product.Parameters
+                                    .Split('|', StringSplitOptions.RemoveEmptyEntries)
+                                    .Select(p => p.Split('='))
+                                    .Where(p => p.Length > 1 && groupParams.Contains(p[0]))
+                                    .Select(p => $"{p[0]}={p[1]}");
+
+                                product.Parameters = string.Join(";", validParams);
+                            }
+                        }
+                    }
+
+                    if (product.ProductToStyleId == 0 && productDefaultStyleLookup.ContainsKey(product.ProductToBuildingPhaseId))
+                    {
+                        product.ProductToStyleId = productDefaultStyleLookup[product.ProductToBuildingPhaseId];
+                    }
+
+                    if (shouldIncludeProductName)
+                    {
+                        product.BuildingPhaseId = tempBuildingPhaseId;
+                        product.ProductId = tempProductId;
+                        product.ProductName = tempProductName;
+
+                        if (product.ProductToStyleId <= 0)
+                        {
+                            listProductsWithOutStyle.Add(product.ProductName);
+                        }
+                        else if (productToStyleDict.TryGetValue(product.ProductToStyleId, out var node))
+                        {
+                            product.StyleId = node.StyleId;
+                        }
+                    }
+                    else
+                    {
+                        var key = productToBuildingPhaseDict
+                            .Where(t => t.Value == product.ProductToBuildingPhaseId)
+                            .Select(t => t.Key)
+                            .FirstOrDefault();
+
+                        if (key != null)
+                        {
+                            product.BuildingPhaseId = key.BuildingPhaseId;
+                            product.ProductId = key.ProductId;
+                            product.ProductName = productDict[product.ProductId];
+
+                            if (product.ProductToStyleId == 0 && defaultProductToStyleDict.ContainsKey(product.ProductId))
+                            {
+                                product.StyleId = defaultProductToStyleDict[product.ProductId].Item1;
+                                product.ProductToStyleId = defaultProductToStyleDict[product.ProductId].Item2;
+                            }
+                            else if (productLookupForStyleDict.TryGetValue(product.ProductId, out var lookupNode))
+                            {
+                                do
+                                {
+                                    product.StyleId = lookupNode.StyleId;
+                                    lookupNode = lookupNode.Link;
+                                }
+                                while (lookupNode != null && lookupNode.ProductToStyleId != product.ProductToStyleId);
+                            }
+                        }
+                    }
+
+                    if (product.BOMGeneratedReportId > 0)
+                    {
+                        product.NodeId = GetNextTraceNodeId(headerResult.DictionaryNodeGeneratorIds, product.BOMGeneratedReportId);
+                        generatingProducts.AddLast(product);
+                    }
+                }
+
+                if (listProductsWithOutStyle.Any())
+                {
+                    var productsOutStyle = String.Join(", ", listProductsWithOutStyle.Distinct());
+                    var validationErrors = string.Empty;
+                    switch (BOMType)
+                    {
+                        case BOMTypes.CustomOption:
+                            validationErrors = $"Custom Option BOM may not contain all Products, the following {productsOutStyle} are missing Styles.";
+                            break;
+                        case BOMTypes.Job:
+                            validationErrors = $"Job BOM may not contain all Products, the following {productsOutStyle} are missing Styles.";
+                            break;
+                        case BOMTypes.GlobalOption:
+                            validationErrors = $"Global Option BOM may not contain all Products, the following {productsOutStyle} are missing Styles.";
+                            break;
+                    }
+                    return BaseResultDto<BOMPreparationDataDto>.Failure(validationErrors);
+                }
+
+                return BaseResultDto<BOMPreparationDataDto>.Success(new BOMPreparationDataDto
+                {
+                    ProductDict = productDict,
+                    ProductToBuildingPhaseConversionDict = productToBuildingPhaseConversionDict,
+                    ProductToBuildingPhaseDict = productToBuildingPhaseDict,
+                    ProductToStyleDict = productToStyleDict,
+                    DefaultProductToStyleDict = defaultProductToStyleDict,
+                    ProductLookupForStyleDict = productLookupForStyleDict,
+                    ProductToStyleIdDict = productToStyleIdDict,
+                    ProductToCategoryDict = productToCategoryDict,
+                    ProductLookupCategoryIdsDict = productLookupCategoryIdsDict,
+                    ReverseProductDict = reverseProductDict,
+                    SystemOrientationDict = systemOrientationDict,
+                    SystemOrientationIdKeyDict = systemOrientationIdKeyDict,
+                    JobOrientation = jobOrientation,
+                    ListProductsWithOutStyle = listProductsWithOutStyle,
+                    GeneratingProducts = generatingProducts
+                });
+            }
+            catch (Exception ex)
             {
-                ProductDict = productDict
-            });
+                _logger.LogError(ex, $"Error in {nameof(GetGeneratingProducts)}");
+                return BaseResultDto<BOMPreparationDataDto>.Failure($"Error in {nameof(GetGeneratingProducts)}");
+            }
         }
 
         protected int GetNextTraceNodeId(Dictionary<int, int> nodeGeneratorIds, int generatedReportId)
@@ -677,37 +714,5 @@ namespace BOMService.Infrastructure.Services
 
             return ++nodeGeneratorIds[generatedReportId];
         }
-    }
-
-    public record ProductPhaseKey(int ProductId, int BuildingPhaseId);
-
-    public record ProductStyleKey(int ProductId, int StyleId);
-
-    /// <summary>
-    /// Suggested name: ProductToBuildingPhaseNode
-    /// </summary>
-    public class ProductToBuildingPhaseConversionInformationNode
-    {
-        public int BuildingPhaseId { get; set; }
-        public int ProductId { get; set; }
-    }
-
-    /// <summary>
-    /// Suggested name: ProductStyleNode
-    /// </summary>
-    public class ProductToStyleLookupNode
-    {
-        public int ProductId { get; set; }
-        public int StyleId { get; set; }
-    }
-
-    /// <summary>
-    /// Suggested name: StyleProductChainNode
-    /// </summary>
-    public class ProductInverseStyleLookupNode
-    {
-        public int StyleId { get; set; }
-        public int ProductToStyleId { get; set; }
-        public ProductInverseStyleLookupNode? Link { get; set; }
     }
 }

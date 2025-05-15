@@ -1,6 +1,6 @@
-﻿namespace BOMService.Application.Models
+﻿namespace BOMService.Application.DTOs
 {
-    public class HeaderOptionConditionModel
+    public class HeaderOptionConditionDto
     {
         public int OptionId { get; set; }
         public string DependentCondition { get; set; } = string.Empty;

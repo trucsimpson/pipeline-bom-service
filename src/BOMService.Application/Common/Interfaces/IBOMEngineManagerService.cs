@@ -1,4 +1,4 @@
-﻿using BOMService.Application.Models;
+﻿using BOMService.Application.DTOs;
 using System.Data;
 
 namespace BOMService.Application.Common.Interfaces
@@ -19,7 +19,7 @@ namespace BOMService.Application.Common.Interfaces
         /// <param name="typeName"></param>
         /// <param name="inputReportTable"></param>
         /// <returns></returns>
-        Task<List<HouseOptionReportResultModel>> ClearAndGenerateReportsAsync(string SQLCommandName, string typeName, DataTable inputReportTable);
+        Task<List<HouseOptionReportResultDto>> ClearAndGenerateReportsAsync(string SQLCommandName, string typeName, DataTable inputReportTable);
 
         /// <summary>
         /// Get the status of the job flip.
@@ -29,6 +29,6 @@ namespace BOMService.Application.Common.Interfaces
         /// </summary>
         /// <param name="jobIds"></param>
         /// <returns></returns>
-        Task<List<JobFlipStatusModel>> GetJobFlipStatusesAsync(string jobIds);
+        Task<List<JobFlipStatusDto>> GetJobFlipStatusesAsync(string jobIds);
     }
 }

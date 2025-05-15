@@ -1,5 +1,5 @@
 ﻿using BOMService.Application.Common.Interfaces;
-using BOMService.Application.Models;
+using BOMService.Application.DTOs;
 using BOMService.Domain.Entities;
 using BOMService.Domain.Enums;
 using BOMService.Domain.Repositories;
@@ -113,9 +113,9 @@ namespace BOMService.Infrastructure.Services
             return productOrientations.ToDictionary(t => (int)t.Id, t => new Tuple<string, string>(t.Name, t.ShortDisplay));
         }
 
-        public async Task<List<BOMGeneratingProductModel>> GetProductsForBOMGenerationAsync(string SQLCommandName, string typeName, DataTable inputReportTable)
+        public async Task<List<BOMGeneratingProductDto>> GetProductsForBOMGenerationAsync(string SQLCommandName, string typeName, DataTable inputReportTable)
         {
-            var result = new List<BOMGeneratingProductModel>();
+            var result = new List<BOMGeneratingProductDto>();
 
             using (var conn = new SqlConnection(_connectionString))
             using (var cmd = new SqlCommand(SQLCommandName, conn))
@@ -136,7 +136,7 @@ namespace BOMService.Infrastructure.Services
                 {
                     while (await reader.ReadAsync())
                     {
-                        var model = new BOMGeneratingProductModel();
+                        var model = new BOMGeneratingProductDto();
 
                         if (reader.TryGetValue<int>("AssetsId", out var assetId))
                             model.AssetId = assetId;
@@ -162,7 +162,7 @@ namespace BOMService.Infrastructure.Services
                             model.ProductQuantityTotal = productQuantity;
                         }
 
-                        if (reader.TryGetValue<short>("KMSourceId", out var KMSourceId))
+                        if (reader.TryGetValue<byte>("KMSourceId", out var KMSourceId))
                             model.KMSourceId = KMSourceId;
 
                         if (reader.TryGetValue<int>("KMTypeId", out var KMTypeId))

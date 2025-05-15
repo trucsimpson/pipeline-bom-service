@@ -1,6 +1,6 @@
-﻿namespace BOMService.Application.Models
+﻿namespace BOMService.Application.DTOs
 {
-    public class BOMGeneratingProductModel
+    public class BOMGeneratingProductDto
     {
         public int AssetId { get; set; }
 
@@ -18,7 +18,7 @@
 
         public decimal ProductQuantityTotal { get; set; }
 
-        public short KMSourceId { get; set; }
+        public byte KMSourceId { get; set; }
 
         public int KMTypeId { get; set; }
 

@@ -1,6 +1,6 @@
-﻿namespace BOMService.Application.Models
+﻿namespace BOMService.Application.DTOs
 {
-    public class JobFlipStatusModel
+    public class JobFlipStatusDto
     {
         public int JobId { get; set; }
 

@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using BOMService.Application.BOMs.Commands;
 using BOMService.Application.Common.Interfaces;
-using BOMService.Application.Models;
+using BOMService.Application.DTOs;
 using BOMService.Domain.Entities;
 using BOMService.Domain.Enums;
 using BOMService.Domain.Repositories;

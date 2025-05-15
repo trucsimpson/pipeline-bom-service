@@ -1,5 +1,5 @@
 ﻿using BOMService.Application.Common.Interfaces;
-using BOMService.Application.Models;
+using BOMService.Application.DTOs;
 using BOMService.Infrastructure.Extensions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -22,9 +22,9 @@ namespace BOMService.Infrastructure.Services
             _timeout = 300;
         }
 
-        public async Task<List<HouseOptionReportResultModel>> ClearAndGenerateReportsAsync(string SQLCommandName, string typeName, DataTable inputReportTable)
+        public async Task<List<HouseOptionReportResultDto>> ClearAndGenerateReportsAsync(string SQLCommandName, string typeName, DataTable inputReportTable)
         {
-            var result = new List<HouseOptionReportResultModel>();
+            var result = new List<HouseOptionReportResultDto>();
 
             using (var conn = new SqlConnection(_connectionString))
             using (var cmd = new SqlCommand(SQLCommandName, conn))
@@ -44,7 +44,7 @@ namespace BOMService.Infrastructure.Services
                 {
                     while (await reader.ReadAsync())
                     {
-                        var model = new HouseOptionReportResultModel();
+                        var model = new HouseOptionReportResultDto();
 
                         if (reader.TryGetValue<int>("GeneratedReportId", out var reportId))
                             model.GeneratedReportId = reportId;
@@ -66,9 +66,9 @@ namespace BOMService.Infrastructure.Services
             return result;
         }
 
-        public async Task<List<JobFlipStatusModel>> GetJobFlipStatusesAsync(string jobIds)
+        public async Task<List<JobFlipStatusDto>> GetJobFlipStatusesAsync(string jobIds)
         {
-            var result = new List<JobFlipStatusModel>();
+            var result = new List<JobFlipStatusDto>();
 
             using (var conn = new SqlConnection(_connectionString))
             using (var cmd = new SqlCommand("BOM.GetJobFlipStatuses", conn))
@@ -82,7 +82,7 @@ namespace BOMService.Infrastructure.Services
                 {
                     while (await reader.ReadAsync())
                     {
-                        var model = new JobFlipStatusModel();
+                        var model = new JobFlipStatusDto();
 
                         if (reader.TryGetValue<int>("Jobs_Id", out var jobId))
                             model.JobId = jobId;

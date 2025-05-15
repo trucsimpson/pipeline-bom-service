@@ -1,10 +1,13 @@
-﻿namespace BOMService.Application.Models
+﻿namespace BOMService.Application.DTOs
 {
-    public class HouseOptionReportResultModel
+    public class HouseOptionReportResultDto
     {
         public int GeneratedReportId { get; set; }
+
         public string ReportParams { get; set; }
+
         public int OptionId { get; set; }
+
         public string DependentCondition { get; set; }
     }
 }

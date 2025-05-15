@@ -1,4 +1,4 @@
-﻿using BOMService.Application.Models;
+﻿using BOMService.Application.DTOs;
 using BOMService.Domain.Entities;
 using System.Data;
 
@@ -22,6 +22,6 @@ namespace BOMService.Application.Common.Interfaces
 
         Task<Dictionary<int, Tuple<string, string>>> GetProductOrientationIdKeyDictAsync();
         
-        Task<List<BOMGeneratingProductModel>> GetProductsForBOMGenerationAsync(string SQLCommandName, string typeName, DataTable inputReportTable);
+        Task<List<BOMGeneratingProductDto>> GetProductsForBOMGenerationAsync(string SQLCommandName, string typeName, DataTable inputReportTable);
     }
 }
